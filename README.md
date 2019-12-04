@@ -6,3 +6,6 @@ Needs:
 * MQTT broker
 
 
+Also needs:
+* Python 3.6+
+* Goodtables-py (pip install goodtables)
