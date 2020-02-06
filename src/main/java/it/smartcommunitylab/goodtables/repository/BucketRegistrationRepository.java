@@ -8,17 +8,17 @@ import it.smartcommunitylab.goodtables.model.BucketRegistration;
 
 public interface BucketRegistrationRepository extends JpaRepository<BucketRegistration, Long> {
 
-    Long countByScopeId(String scopeId);
+    Long countBySpaceId(String spaceId);
 
-    List<BucketRegistration> findByScopeId(String scopeId);
+    List<BucketRegistration> findBySpaceId(String spaceId);
 
-    Long countByScopeIdAndUserId(String scopeId, String userId);
+    Long countBySpaceIdAndUserId(String spaceId, String userId);
 
-    List<BucketRegistration> findByScopeIdAndUserId(String scopeId, String userId);
+    List<BucketRegistration> findBySpaceIdAndUserId(String spaceId, String userId);
 
-    Long countByScopeIdAndBucket(String scopeId, String bucket);
+    Long countBySpaceIdAndBucket(String spaceId, String bucket);
 
-    List<BucketRegistration> findByScopeIdAndBucket(String scopeId, String bucket);
+    List<BucketRegistration> findBySpaceIdAndBucket(String spaceId, String bucket);
 
     BucketRegistration findByBucketAndType(String bucket, String type);
 }

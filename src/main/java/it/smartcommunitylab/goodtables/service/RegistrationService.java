@@ -28,29 +28,29 @@ public class RegistrationService {
     /*
      * Generic
      */
-    @PreAuthorize("hasPermission(#scopeId, 'SCOPE', 'WRITE')")
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'WRITE')")
     public RegistrationDTO addRegistration(
-            String scopeId, String userId,
+            String spaceId, String userId,
             String kind, String name, String type)
             throws InvalidArgumentException, SystemException {
         if (RegistrationType.MINIO.equals(RegistrationType.fromString(kind))) {
-            return RegistrationDTO.fromRegistration(minioService.addBucketRegistration(scopeId, userId, name, type));
+            return RegistrationDTO.fromRegistration(minioService.addBucketRegistration(spaceId, userId, name, type));
         }
 
         throw new InvalidArgumentException();
     }
 
-    @PreAuthorize("hasPermission(#scopeId, 'SCOPE', 'DELETE')")
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'DELETE')")
     public RegistrationDTO deleteRegistration(
-            String scopeId, String userId,
+            String spaceId, String userId,
             String kind, long id)
             throws InvalidArgumentException, SystemException, NoSuchRegistrationException {
         if (RegistrationType.MINIO.equals(RegistrationType.fromString(kind))) {
 
-            // fetch to validate scope
+            // fetch to validate space
             BucketRegistration reg = minioService.getBucketRegistration(id);
-            if (!reg.getScopeId().equals(scopeId)) {
-                throw new AccessDeniedException("scope does not match");
+            if (!reg.getSpaceId().equals(spaceId)) {
+                throw new AccessDeniedException("space does not match");
             }
 
             return RegistrationDTO.fromRegistration(minioService.deleteBucketRegistration(id));
@@ -60,17 +60,17 @@ public class RegistrationService {
         throw new InvalidArgumentException();
     }
 
-    @PreAuthorize("hasPermission(#scopeId, 'SCOPE', 'READ')")
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
     public RegistrationDTO getRegistration(
-            String scopeId, String userId,
+            String spaceId, String userId,
             String kind, long id)
             throws InvalidArgumentException, SystemException, NoSuchRegistrationException {
 
         if (RegistrationType.MINIO.equals(RegistrationType.fromString(kind))) {
-            // fetch to validate scope
+            // fetch to validate space
             BucketRegistration reg = minioService.getBucketRegistration(id);
-            if (!reg.getScopeId().equals(scopeId)) {
-                throw new AccessDeniedException("scope does not match");
+            if (!reg.getSpaceId().equals(spaceId)) {
+                throw new AccessDeniedException("space does not match");
             }
 
             return RegistrationDTO.fromRegistration(reg);
@@ -80,28 +80,71 @@ public class RegistrationService {
         throw new InvalidArgumentException();
     }
 
-    @PreAuthorize("hasPermission(#scopeId, 'SCOPE', 'READ')")
-    public List<RegistrationDTO> listRegistration(
-            String scopeId, String userId,
-            String kind, String name)
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
+    public List<RegistrationDTO> getRegistrations(
+            String spaceId, String userId,
+            String kind, long[] ids)
             throws InvalidArgumentException, SystemException {
 
         if (RegistrationType.MINIO.equals(RegistrationType.fromString(kind))) {
-            return minioService.listBucketRegistration(scopeId, name).stream()
+            // filter space
+            return minioService.getBucketRegistrations(ids).stream()
+                    .filter(r -> spaceId.equals(r.getSpaceId()))
                     .map(r -> RegistrationDTO.fromRegistration(r)).collect(Collectors.toList());
         }
 
         throw new InvalidArgumentException();
     }
 
-    @PreAuthorize("hasPermission(#scopeId, 'SCOPE', 'READ')")
-    public long countRegistrations(
-            String scopeId, String userId,
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
+    public List<RegistrationDTO> listRegistration(
+            String spaceId, String userId,
             String kind, String name)
             throws InvalidArgumentException, SystemException {
 
         if (RegistrationType.MINIO.equals(RegistrationType.fromString(kind))) {
-            return minioService.countBucketRegistration(scopeId, name);
+            return minioService.listBucketRegistration(spaceId, name).stream()
+                    .map(r -> RegistrationDTO.fromRegistration(r)).collect(Collectors.toList());
+        }
+
+        throw new InvalidArgumentException();
+    }
+
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
+    public long countRegistrations(
+            String spaceId, String userId,
+            String kind, String name)
+            throws InvalidArgumentException, SystemException {
+
+        if (RegistrationType.MINIO.equals(RegistrationType.fromString(kind))) {
+            return minioService.countBucketRegistration(spaceId, name);
+        }
+
+        throw new InvalidArgumentException();
+    }
+
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
+    public List<RegistrationDTO> listRegistration(
+            String spaceId, String userId,
+            String kind)
+            throws InvalidArgumentException, SystemException {
+
+        if (RegistrationType.MINIO.equals(RegistrationType.fromString(kind))) {
+            return minioService.listBucketRegistration(spaceId).stream()
+                    .map(r -> RegistrationDTO.fromRegistration(r)).collect(Collectors.toList());
+        }
+
+        throw new InvalidArgumentException();
+    }
+
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
+    public long countRegistrations(
+            String spaceId, String userId,
+            String kind)
+            throws InvalidArgumentException, SystemException {
+
+        if (RegistrationType.MINIO.equals(RegistrationType.fromString(kind))) {
+            return minioService.countBucketRegistration(spaceId);
         }
 
         throw new InvalidArgumentException();

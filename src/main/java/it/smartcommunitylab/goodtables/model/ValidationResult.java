@@ -33,6 +33,8 @@ public class ValidationResult {
 
     private String type;
 
+    private int status;
+
     @Length(max = 100000)
     @Lob
     private String report;
@@ -43,7 +45,7 @@ public class ValidationResult {
     private Date createdDate;
 
     private String userId;
-    private String scopeId;
+    private String spaceId;
 
     public long getId() {
         return id;
@@ -75,6 +77,14 @@ public class ValidationResult {
 
     public void setKey(String key) {
         this.key = key;
+    }
+
+    public int getStatus() {
+        return status;
+    }
+
+    public void setStatus(int status) {
+        this.status = status;
     }
 
     public String getReport() {
@@ -109,12 +119,12 @@ public class ValidationResult {
         this.userId = userId;
     }
 
-    public String getScopeId() {
-        return scopeId;
+    public String getSpaceId() {
+        return spaceId;
     }
 
-    public void setScopeId(String scopeId) {
-        this.scopeId = scopeId;
+    public void setSpaceId(String spaceId) {
+        this.spaceId = spaceId;
     }
 
 }

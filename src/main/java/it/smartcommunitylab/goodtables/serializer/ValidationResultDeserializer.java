@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 
 import it.smartcommunitylab.goodtables.model.ValidationResultDTO;
+import it.smartcommunitylab.goodtables.model.ValidationStatus;
 
 public class ValidationResultDeserializer extends StdDeserializer<ValidationResultDTO> {
 
@@ -42,6 +43,9 @@ public class ValidationResultDeserializer extends StdDeserializer<ValidationResu
         }
         if (node.has("type")) {
             dto.setType(node.get("type").asText());
+        }
+        if (node.has("status")) {
+            dto.setStatus(node.get("status").asInt(ValidationStatus.UNKNOWN.value()));
         }
 
         JsonNode report = node.get("report");

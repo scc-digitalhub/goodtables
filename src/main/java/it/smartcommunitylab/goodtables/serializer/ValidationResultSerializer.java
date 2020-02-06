@@ -2,6 +2,9 @@ package it.smartcommunitylab.goodtables.serializer;
 
 import java.io.IOException;
 
+import org.joda.time.DateTime;
+import org.joda.time.format.ISODateTimeFormat;
+
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.SerializerProvider;
@@ -28,16 +31,23 @@ public class ValidationResultSerializer extends StdSerializer<ValidationResultDT
 
         jgen.writeStartObject();
         jgen.writeNumberField("id", result.getId());
-
+        // add date as iso format
+        DateTime dateTime = new DateTime(result.getCreatedDate().getTime());
+        jgen.writeStringField("createdDate", ISODateTimeFormat.dateTime().print(dateTime));
         jgen.writeStringField("kind", result.getKind());
         jgen.writeStringField("name", result.getName());
         jgen.writeStringField("key", result.getKey());
         jgen.writeStringField("type", result.getType());
 
         // write report json
-        jgen.writeFieldName("report");
-        jgen.writeRawValue(result.getReport());
+        jgen.writeStringField("status", String.valueOf(result.getStatus()));
 
+        if (!result.getReport().isEmpty()) {
+            jgen.writeFieldName("report");
+            jgen.writeRawValue(result.getReport());
+        } else {
+            jgen.writeStringField("report", "{}");
+        }
         // close
         jgen.writeEndObject();
     }

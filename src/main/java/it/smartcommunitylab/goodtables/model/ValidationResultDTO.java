@@ -21,13 +21,15 @@ public class ValidationResultDTO {
 
     private String type;
 
+    private int status;
+
     private String report;
 
     private Date createdDate;
 
     private String userId;
 
-    private String scopeId;
+    private String spaceId;
 
     public ValidationResultDTO() {
         super();
@@ -36,6 +38,7 @@ public class ValidationResultDTO {
         name = "";
         key = "";
         type = "";
+        status = ValidationStatus.UNKNOWN.value();
         report = "";
         createdDate = new Date();
     }
@@ -80,6 +83,14 @@ public class ValidationResultDTO {
         this.type = type;
     }
 
+    public int getStatus() {
+        return status;
+    }
+
+    public void setStatus(int status) {
+        this.status = status;
+    }
+
     public String getReport() {
         return report;
     }
@@ -104,12 +115,12 @@ public class ValidationResultDTO {
         this.userId = userId;
     }
 
-    public String getScopeId() {
-        return scopeId;
+    public String getSpaceId() {
+        return spaceId;
     }
 
-    public void setScopeId(String scopeId) {
-        this.scopeId = scopeId;
+    public void setSpaceId(String spaceId) {
+        this.spaceId = spaceId;
     }
 
     @Override
@@ -129,11 +140,12 @@ public class ValidationResultDTO {
         dto.name = res.getName();
         dto.key = res.getKey();
         dto.type = res.getType();
+        dto.status = res.getStatus();
         dto.report = res.getReport();
         dto.createdDate = res.getCreatedDate();
 
         dto.userId = res.getUserId();
-        dto.scopeId = res.getScopeId();
+        dto.spaceId = res.getSpaceId();
 
         return dto;
     }

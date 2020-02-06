@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
 
 import io.minio.ObjectStat;
@@ -14,6 +15,7 @@ import it.smartcommunitylab.goodtables.common.SystemException;
 import it.smartcommunitylab.goodtables.minio.MinioBridge;
 import it.smartcommunitylab.goodtables.minio.MinioException;
 import it.smartcommunitylab.goodtables.model.BucketRegistration;
+import it.smartcommunitylab.goodtables.model.ValidationStatus;
 import it.smartcommunitylab.goodtables.repository.BucketNotificationRepository;
 import it.smartcommunitylab.goodtables.repository.BucketRegistrationRepository;
 import it.smartcommunitylab.goodtables.util.FileUtils;
@@ -44,13 +46,14 @@ public class MinioValidationService {
         return bucketRepository.findByBucketAndType(bucket, type);
     }
 
-    public String executeValidation(String bucket, String key, String type)
+    public Pair<Integer, String> executeValidation(String bucket, String key, String type)
             throws InvalidArgumentException, MinioException, RuntimeException, SystemException {
 
         _log.debug("execute validation for  bucket " + bucket + " key " + key + " type " + type
                 + " with thread " + Thread.currentThread().getName());
 
         try {
+            int status = ValidationStatus.PROCESSING.value();
             String report = "";
             // check if bucket+key exists and collect stats
             _log.debug("fetch stats for bucket " + bucket + " key " + key);
@@ -84,9 +87,12 @@ public class MinioValidationService {
             InputStream inputStream = minio.getObject(bucket, key);
             try {
                 _log.debug("execute validator " + validator.getType());
-                report = validator.validate(inputStream, mimeType);
-
-                return report;
+                Pair<Integer, String> res = validator.validate(inputStream, mimeType);
+                status = res.getFirst();
+                report = res.getSecond();
+                _log.debug("execute validator status " + String.valueOf(status));
+                
+                return res;
             } finally {
                 inputStream.close();
             }

@@ -1,6 +1,9 @@
 package it.smartcommunitylab.goodtables.service.minio;
 
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
+import java.util.stream.LongStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,12 +37,12 @@ public class MinioRegistrationService {
      */
 
     public BucketRegistration addBucketRegistration(
-            String scopeId, String userId,
+            String spaceId, String userId,
             String bucket, String type) {
-        // basic check for scope
+        // basic check for space
         // TODO replace with external service
-        if (!bucket.startsWith(scopeId)) {
-            throw new AccessDeniedException("scope does not match");
+        if (!bucket.startsWith(spaceId)) {
+            throw new AccessDeniedException("space does not match");
         }
 
         _log.debug("add bucket registration for " + bucket + " type " + type);
@@ -48,7 +51,7 @@ public class MinioRegistrationService {
         reg.setType(type);
 
         reg.setUserId(userId);
-        reg.setScopeId(scopeId);
+        reg.setSpaceId(spaceId);
 
         // listener will trigger notification creation
         return bucketRepository.saveAndFlush(reg);
@@ -100,16 +103,33 @@ public class MinioRegistrationService {
         }
     }
 
+    public List<BucketRegistration> getBucketRegistrations(long[] ids) {
+        Iterable<Long> iter = () -> LongStream.of(ids).boxed().iterator();
+
+        return bucketRepository.findAllById(iter);
+
+    }
+
     public List<BucketRegistration> listBucketRegistration(
-            String scopeId,
-            String bucket) {
-        return bucketRepository.findByScopeIdAndBucket(scopeId, bucket);
+            String spaceId) {
+        return bucketRepository.findBySpaceId(spaceId);
     }
 
     public long countBucketRegistration(
-            String scopeId,
+            String spaceId) {
+        return bucketRepository.countBySpaceId(spaceId);
+    }
+
+    public List<BucketRegistration> listBucketRegistration(
+            String spaceId,
             String bucket) {
-        return bucketRepository.countByScopeIdAndBucket(scopeId, bucket);
+        return bucketRepository.findBySpaceIdAndBucket(spaceId, bucket);
+    }
+
+    public long countBucketRegistration(
+            String spaceId,
+            String bucket) {
+        return bucketRepository.countBySpaceIdAndBucket(spaceId, bucket);
     }
 
     /*

@@ -35,7 +35,7 @@ public class BucketRegistration {
      * Audit
      */
     private String userId;
-    private String scopeId;
+    private String spaceId;
 
     @Column(name = "created_date", nullable = false, updatable = false)
     @CreatedDate
@@ -87,12 +87,12 @@ public class BucketRegistration {
         this.userId = userId;
     }
 
-    public String getScopeId() {
-        return scopeId;
+    public String getSpaceId() {
+        return spaceId;
     }
 
-    public void setScopeId(String scopeId) {
-        this.scopeId = scopeId;
+    public void setSpaceId(String spaceId) {
+        this.spaceId = spaceId;
     }
 
     public Date getCreatedDate() {

@@ -30,10 +30,14 @@ public class ResourceServerConfiguration extends ResourceServerConfigurerAdapter
             http
                     .authorizeRequests()
                     .antMatchers("/api/auth/**").permitAll()
-                    .antMatchers("/api/**").authenticated();
+                    .antMatchers("/api/**").authenticated()
+                    .antMatchers("/h2-console/**").permitAll();
 
         } else {
             http.authorizeRequests().anyRequest().permitAll();
         }
+
+        // enable X-Frame options for console
+        http.headers().frameOptions().sameOrigin();
     }
 }

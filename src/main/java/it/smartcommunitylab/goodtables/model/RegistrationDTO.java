@@ -7,7 +7,7 @@ public class RegistrationDTO {
     private String type;
 
     private String userId;
-    private String scopeId;
+    private String spaceId;
 
     public RegistrationDTO() {
         id = -1;
@@ -16,7 +16,7 @@ public class RegistrationDTO {
         type = "";
 
         userId = "";
-        scopeId = "";
+        spaceId = "";
     }
 
     public long getId() {
@@ -59,14 +59,6 @@ public class RegistrationDTO {
         this.userId = userId;
     }
 
-    public String getScopeId() {
-        return scopeId;
-    }
-
-    public void setScopeId(String scopeId) {
-        this.scopeId = scopeId;
-    }
-
     public static RegistrationDTO fromRegistration(BucketRegistration br) {
         RegistrationDTO reg = new RegistrationDTO();
         reg.id = br.getId();
@@ -76,7 +68,7 @@ public class RegistrationDTO {
 
         // audit
         reg.userId = br.getUserId();
-        reg.scopeId = br.getScopeId();
+        reg.spaceId = br.getSpaceId();
 
         return reg;
     }

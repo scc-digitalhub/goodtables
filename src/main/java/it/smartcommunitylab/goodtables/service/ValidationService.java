@@ -2,10 +2,13 @@ package it.smartcommunitylab.goodtables.service;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.util.Pair;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,6 +21,7 @@ import it.smartcommunitylab.goodtables.model.BucketRegistration;
 import it.smartcommunitylab.goodtables.model.RegistrationDTO;
 import it.smartcommunitylab.goodtables.model.ValidationResult;
 import it.smartcommunitylab.goodtables.model.ValidationResultDTO;
+import it.smartcommunitylab.goodtables.model.ValidationStatus;
 import it.smartcommunitylab.goodtables.repository.ValidationResultRepository;
 import it.smartcommunitylab.goodtables.service.minio.MinioValidationService;
 
@@ -35,28 +39,28 @@ public class ValidationService {
      * Results
      */
 
-    @PreAuthorize("hasPermission(#scopeId, 'SCOPE', 'WRITE')")
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'WRITE')")
     public ValidationResultDTO addResult(
-            String scopeId, String userId,
+            String spaceId, String userId,
             String kind, String name, String key, String type,
-            String report) {
+            int status, String report) {
         _log.debug("add result for " + kind + " name " + name + " key " + key + " type " + type);
-        ValidationResult result = _addResult(kind, name, key, type, report, scopeId, userId);
+        ValidationResult result = _addResult(kind, name, key, type, status, report, spaceId, userId);
         return ValidationResultDTO.fromResult(result);
     }
 
-    @PreAuthorize("hasPermission(#scopeId, 'SCOPE', 'READ')")
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
     public ValidationResultDTO getResult(
-            String scopeId, String userId,
+            String spaceId, String userId,
             long id) throws NoSuchValidationResultException {
         if (repository.existsById(id)) {
             _log.debug("get result for " + String.valueOf(id));
             ValidationResult res = repository.getOne(id);
 
-            if (res.getScopeId().equals(scopeId)) {
+            if (res.getSpaceId().equals(spaceId)) {
                 return ValidationResultDTO.fromResult(res);
             } else {
-                throw new AccessDeniedException("scope does not match");
+                throw new AccessDeniedException("space does not match");
             }
 
         } else {
@@ -64,21 +68,32 @@ public class ValidationService {
         }
     }
 
-    @PreAuthorize("hasPermission(#scopeId, 'SCOPE', 'DELETE')")
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
+    public List<ValidationResultDTO> getResults(
+            String spaceId, String userId,
+            long[] ids) {
+        _log.debug("get result for " + String.valueOf(ids));
+        Iterable<Long> iter = () -> LongStream.of(ids).boxed().iterator();
+        return repository.findAllById(iter).stream()
+                .filter(r -> spaceId.equals(r.getSpaceId()))
+                .map(r -> ValidationResultDTO.fromResult(r)).collect(Collectors.toList());
+    }
+
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'DELETE')")
     public ValidationResultDTO deleteResult(
-            String scopeId, String userId,
+            String spaceId, String userId,
             long id) throws NoSuchValidationResultException {
         if (repository.existsById(id)) {
             _log.debug("delete result for " + String.valueOf(id));
             ValidationResult res = repository.getOne(id);
 
-            if (res.getScopeId().equals(scopeId)) {
+            if (res.getSpaceId().equals(spaceId)) {
                 // delete, nothing else to do
                 repository.delete(res);
 
                 return ValidationResultDTO.fromResult(res);
             } else {
-                throw new AccessDeniedException("scope does not match");
+                throw new AccessDeniedException("space does not match");
             }
 
         } else {
@@ -86,33 +101,96 @@ public class ValidationService {
         }
     }
 
-    @PreAuthorize("hasPermission(#scopeId, 'SCOPE', 'READ')")
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
     public long countResult(
-            String scopeId, String userId,
-            String kind, String name) {
-        return repository.countByScopeIdAndKindAndName(scopeId, kind, name);
+            String spaceId, String userId) {
+        return repository.countBySpaceId(spaceId);
     }
 
-    @PreAuthorize("hasPermission(#scopeId, 'SCOPE', 'READ')")
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
     public List<ValidationResultDTO> listResult(
-            String scopeId, String userId,
-            String kind, String name) {
-        return repository.findByScopeIdAndKindAndName(scopeId, kind, name).stream()
+            String spaceId, String userId) {
+        return repository.findBySpaceId(spaceId).stream()
                 .map(r -> ValidationResultDTO.fromResult(r)).collect(Collectors.toList());
     }
 
-    @PreAuthorize("hasPermission(#scopeId, 'SCOPE', 'READ')")
-    public long countResult(
-            String scopeId, String userId,
-            String kind, String name, String key) {
-        return repository.countByScopeIdAndKindAndNameAndKey(scopeId, kind, name, key);
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
+    public List<ValidationResultDTO> listResult(
+            String spaceId, String userId,
+            Pageable page) {
+        return repository.findBySpaceId(spaceId, page).stream()
+                .map(r -> ValidationResultDTO.fromResult(r)).collect(Collectors.toList());
     }
 
-    @PreAuthorize("hasPermission(#scopeId, 'SCOPE', 'READ')")
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
+    public long countResult(
+            String spaceId, String userId,
+            String kind) {
+        return repository.countBySpaceIdAndKind(spaceId, kind);
+    }
+
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
     public List<ValidationResultDTO> listResult(
-            String scopeId, String userId,
+            String spaceId, String userId,
+            String kind) {
+        return repository.findBySpaceIdAndKind(spaceId, kind).stream()
+                .map(r -> ValidationResultDTO.fromResult(r)).collect(Collectors.toList());
+    }
+
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
+    public List<ValidationResultDTO> listResult(
+            String spaceId, String userId,
+            String kind,
+            Pageable page) {
+        return repository.findBySpaceIdAndKind(spaceId, kind, page).stream()
+                .map(r -> ValidationResultDTO.fromResult(r)).collect(Collectors.toList());
+    }
+
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
+    public long countResult(
+            String spaceId, String userId,
+            String kind, String name) {
+        return repository.countBySpaceIdAndKindAndName(spaceId, kind, name);
+    }
+
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
+    public List<ValidationResultDTO> listResult(
+            String spaceId, String userId,
+            String kind, String name) {
+        return repository.findBySpaceIdAndKindAndName(spaceId, kind, name).stream()
+                .map(r -> ValidationResultDTO.fromResult(r)).collect(Collectors.toList());
+    }
+
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
+    public List<ValidationResultDTO> listResult(
+            String spaceId, String userId,
+            String kind, String name,
+            Pageable page) {
+        return repository.findBySpaceIdAndKindAndName(spaceId, kind, name, page).stream()
+                .map(r -> ValidationResultDTO.fromResult(r)).collect(Collectors.toList());
+    }
+
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
+    public long countResult(
+            String spaceId, String userId,
             String kind, String name, String key) {
-        return repository.findByScopeIdAndKindAndNameAndKey(scopeId, kind, name, key).stream()
+        return repository.countBySpaceIdAndKindAndNameAndKey(spaceId, kind, name, key);
+    }
+
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
+    public List<ValidationResultDTO> listResult(
+            String spaceId, String userId,
+            String kind, String name, String key) {
+        return repository.findBySpaceIdAndKindAndNameAndKey(spaceId, kind, name, key).stream()
+                .map(r -> ValidationResultDTO.fromResult(r)).collect(Collectors.toList());
+    }
+
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
+    public List<ValidationResultDTO> listResult(
+            String spaceId, String userId,
+            String kind, String name, String key,
+            Pageable page) {
+        return repository.findBySpaceIdAndKindAndNameAndKey(spaceId, kind, name, key, page).stream()
                 .map(r -> ValidationResultDTO.fromResult(r)).collect(Collectors.toList());
     }
 
@@ -127,9 +205,10 @@ public class ValidationService {
 
         try {
             // init
+            int status = ValidationStatus.UNKNOWN.value();
             String report = "";
             String userId = "";
-            String scopeId = "";
+            String spaceId = "";
             RegistrationDTO reg = null;
 
             // execute with validator service
@@ -140,7 +219,9 @@ public class ValidationService {
                     throw new NoSuchRegistrationException("no registration for " + name + " type " + type);
                 }
                 reg = RegistrationDTO.fromRegistration(br);
-                report = minioService.executeValidation(name, key, type);
+                Pair<Integer, String> res = minioService.executeValidation(name, key, type);
+                status = res.getFirst();
+                report = res.getSecond();
                 break;
             default:
                 throw new InvalidArgumentException("unknown validator kind");
@@ -148,11 +229,11 @@ public class ValidationService {
 
             if (reg != null) {
                 userId = reg.getUserId();
-                scopeId = reg.getType();
+                spaceId = reg.getType();
             }
 
             // build result and store
-            ValidationResult result = _addResult(kind, name, key, type, report, scopeId, userId);
+            ValidationResult result = _addResult(kind, name, key, type, status, report, spaceId, userId);
             _log.debug("validation result in " + String.valueOf(result.getId()));
 
         } catch (Exception e) {
@@ -169,17 +250,19 @@ public class ValidationService {
      */
     private ValidationResult _addResult(
             String kind, String name, String key, String type,
-            String report,
-            String scopeId, String userId) {
-        _log.debug("add result for " + kind + " name " + name + " key " + key + " type " + type);
+            int status, String report,
+            String spaceId, String userId) {
+        _log.debug("add result for " + kind + " name " + name + " key " + key + " type " + type + " status "
+                + String.valueOf(status));
         ValidationResult res = new ValidationResult();
         res.setKind(kind);
         res.setName(name);
         res.setKey(key);
         res.setType(type);
+        res.setStatus(status);
         res.setReport(report);
 
-        res.setScopeId(scopeId);
+        res.setSpaceId(spaceId);
         res.setUserId(userId);
 
         return repository.saveAndFlush(res);
