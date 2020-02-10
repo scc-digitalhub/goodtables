@@ -96,6 +96,7 @@ public class RegistrationService {
         throw new InvalidArgumentException();
     }
 
+    //@PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ') and hasPermission(#spaceId, 'SPACE', 'TEST')")
     @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
     public List<RegistrationDTO> listRegistration(
             String spaceId, String userId,
@@ -123,7 +124,7 @@ public class RegistrationService {
         throw new InvalidArgumentException();
     }
 
-    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ')")
+    @PreAuthorize("hasPermission(#spaceId, 'SPACE', 'READ') and #oauth2.hasScope('profile')")
     public List<RegistrationDTO> listRegistration(
             String spaceId, String userId,
             String kind)

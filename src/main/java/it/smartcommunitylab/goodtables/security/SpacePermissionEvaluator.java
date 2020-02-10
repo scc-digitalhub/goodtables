@@ -2,69 +2,39 @@ package it.smartcommunitylab.goodtables.security;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import javax.annotation.PostConstruct;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.PermissionEvaluator;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
-
-import it.smartcommunitylab.goodtables.SystemKeys;
+import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
 
 @Component
 public class SpacePermissionEvaluator implements PermissionEvaluator {
     private final static Logger _log = LoggerFactory.getLogger(SpacePermissionEvaluator.class);
 
-    @Value("${auth.enabled}")
-    private boolean authenticate;
+    public final static String TARGET_TYPE = "SPACE";
 
-    @Value("${spaces.enabled}")
-    private boolean enabled;
+    private RoleActionConverter roleActionConverter = new DefaultRoleActionConverter();
 
-    @Value("${spaces.list}")
-    private List<String> spaces;
+    private final List<String> spaces;
 
-    @Value("${spaces.default}")
-    private String defaultSpace;
+    public SpacePermissionEvaluator() {
+        // enable any space
+        this.spaces = Collections.singletonList("*");
+    }
 
-    @Value("${spaces.roles.mapping.user}")
-    private String roleUserMapping;
-
-    @PostConstruct
-    public void init() {
-        _log.debug("spacePermission enabled? " + enabled);
-
-        if (spaces == null) {
-            spaces = new ArrayList<>();
-        }
-
-        // add placeholder to spaces if empty
-        if (spaces.isEmpty()) {
-            spaces.add("*");
-        }
-
-        // always add default space if defined
-        if (!defaultSpace.isEmpty() && !spaces.contains(defaultSpace)) {
-            spaces.add(defaultSpace);
-        }
-
-        _log.debug("spaces: " + spaces.toString());
-
-        // set default mappings
-
-        if (roleUserMapping.isEmpty()) {
-            roleUserMapping = SystemKeys.ROLE_USER;
-        }
-
-        _log.debug("role mapping " + SystemKeys.ROLE_USER + " to " + roleUserMapping);
-
+    public SpacePermissionEvaluator(Collection<String> spaces) {
+        // restrict enabled spaces to list
+        this.spaces = new ArrayList<>(spaces);
     }
 
     @Override
@@ -77,18 +47,13 @@ public class SpacePermissionEvaluator implements PermissionEvaluator {
     public boolean hasPermission(Authentication authentication, Serializable targetId, String targetType,
             Object permission) {
 
-        // break if auth disabled, nothing to check
-        if (!authenticate) {
-            return true;
+        if (!TARGET_TYPE.equals(targetType)) {
+            return false;
         }
 
         String spaceId = targetId.toString();
         String userId = authentication.getName();
         String action = permission.toString();
-
-        for (GrantedAuthority ga : authentication.getAuthorities()) {
-            _log.trace("user " + userId + " authority " + ga.toString());
-        }
 
         boolean isPermitted = isSpacePermitted(spaceId);
         _log.trace("user " + userId + " hasPermission space " + spaceId + " permitted " + isPermitted);
@@ -96,17 +61,18 @@ public class SpacePermissionEvaluator implements PermissionEvaluator {
         // check in Auth
         boolean hasPermission = false;
 
-        // fetch ONLY space roles
         List<GrantedAuthority> authorities = new ArrayList<>(authentication.getAuthorities());
         _log.trace("user " + userId + " authorities " + authorities.toString());
 
-        Set<String> roles = new HashSet<>();
-        roles.addAll(getSpaceRoles(spaceId, authorities));
+        // keep ONLY space roles
+        List<String> roles = getSpaceRoles(spaceId, authorities);
+        _log.trace("user " + userId + " space " + spaceId + " roles " + roles.toString());
 
-        _log.trace("user " + userId + " roles " + roles.toString());
+        // get role
+        List<String> requiredRoles = roleActionConverter.toRole(action);
+        _log.trace("user " + userId + " action " + action + " require role in " + requiredRoles.toString());
 
-        // user role is enough for all operations
-        hasPermission = roles.contains(SystemKeys.ROLE_USER);
+        hasPermission = CollectionUtils.containsAny(roles, requiredRoles);
 
         _log.debug("user " + userId + " hasPermission for space " + spaceId + ":" + action + " " + hasPermission);
 
@@ -116,43 +82,41 @@ public class SpacePermissionEvaluator implements PermissionEvaluator {
     /*
      * Helpers
      */
-    public List<String> getSpaceRoles(String spaceId, Authentication authentication) {
-        List<GrantedAuthority> authorities = new ArrayList<>(authentication.getAuthorities());
-        return getSpaceRoles(spaceId, authorities);
+
+    public void setRoleActionConverter(RoleActionConverter roleActionConverter) {
+        Assert.notNull(roleActionConverter, "role action converter can not be null");
+        this.roleActionConverter = roleActionConverter;
     }
 
     public boolean isSpacePermitted(String spaceId) {
 
-        if (!defaultSpace.isEmpty() && spaceId.equals(defaultSpace)) {
-            // default space always enabled if defined
+        if (spaces.contains("*")) {
             return true;
         }
 
-        if (enabled) {
-            if (spaces.contains("*")) {
-                return true;
-            }
-            return spaces.contains(spaceId);
-        }
+        return spaces.contains(spaceId);
 
-        return false;
     }
 
     private List<String> getSpaceRoles(String spaceId, List<GrantedAuthority> authorities) {
-        List<String> roles = new ArrayList<>();
+        Set<String> roles = new HashSet<>();
 
         for (GrantedAuthority ga : authorities) {
-            // support variable substitution with placeholder <space>
-            String auth = ga.getAuthority();
-            if (auth != null) {
-                // check against mappings
-                if (auth.equals(roleUserMapping.replace("<space>", spaceId))) {
-                    roles.add(SystemKeys.ROLE_USER);
+            if (ga instanceof NamespacedGrantedAuthority) {
+                NamespacedGrantedAuthority a = (NamespacedGrantedAuthority) ga;
+                // require space match
+                if (a.getSpace().equals(spaceId)) {
+                    roles.add(a.getRole());
                 }
+            } else if (ga instanceof ScopeGrantedAuthority) {
+                // we don't want these here
+            } else {
+                // any non-namespaced role is global
+                roles.add(ga.getAuthority());
             }
         }
 
-        return roles;
+        return new ArrayList<>(roles);
     }
 
 }

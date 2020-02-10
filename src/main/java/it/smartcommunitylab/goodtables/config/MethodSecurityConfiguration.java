@@ -1,6 +1,7 @@
 package it.smartcommunitylab.goodtables.config;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,14 +11,18 @@ import org.springframework.security.access.expression.method.MethodSecurityExpre
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.method.configuration.GlobalMethodSecurityConfiguration;
 
+import it.smartcommunitylab.goodtables.security.PermitAllPermissionEvaluator;
 import it.smartcommunitylab.goodtables.security.SpacePermissionEvaluator;
 
 @Configuration
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 public class MethodSecurityConfiguration extends GlobalMethodSecurityConfiguration {
 
-    @Autowired
-    SpacePermissionEvaluator spaceEvaluator;
+    @Value("${spaces.enabled}")
+    private boolean enabled;
+
+    @Value("${spaces.list}")
+    private List<String> spaces;
 
     @Override
     protected MethodSecurityExpressionHandler createExpressionHandler() {
@@ -28,6 +33,10 @@ public class MethodSecurityConfiguration extends GlobalMethodSecurityConfigurati
 
     @Bean
     public PermissionEvaluator permissionEvaluator() {
-        return spaceEvaluator;
+        if (enabled) {
+            return new SpacePermissionEvaluator(spaces);
+        } else {
+            return new PermitAllPermissionEvaluator();
+        }
     }
 }
